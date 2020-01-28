@@ -37,17 +37,17 @@ The following configuration options are available:
 #### Example configuration
 
 ```php
-authproc = [
+'authproc' => array(
     ...
     '101' => array(
         'class' => 'affiliation:PrimaryAffiliation',
-            // Optional list of SP entity IDs that should be excluded
-            'blacklist' => array(
-                'https://sp1.example.org',
-                'https://sp2.example.org',
-            ),
+        // Optional list of SP entity IDs that should be excluded
+        'blacklist' => array(
+            'https://sp1.example.org',
+            'https://sp2.example.org',
         ),
     ),
+),
 ```
 
 ## Compatibility matrix
