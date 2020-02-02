@@ -1,12 +1,5 @@
 <?php
 
-namespace SimpleSAML\Module\affiliation\Auth\Process;
-
-use SimpleSAML\Configuration;
-use SimpleSAML\Logger;
-use SimpleSAML\XHTML\Template;
-use SimpleSAML\Utils\Config;
-
 /**
  * SimpleSAMLphp authproc filter for extracting the user's primary affiliation.
  *
@@ -31,32 +24,32 @@ use SimpleSAML\Utils\Config;
  *
  * Example configuration:
  *
- *    'authproc' => [
+ *    'authproc' => array(
  *        ...
- *        '101' => [
+ *        '101' => array(
  *            'class' => 'affiliation:PrimaryAffiliation',
  *            // Optional list of SP entity IDs that should be excluded
- *            'blacklist' => [
+ *            'blacklist' => array(
  *                'https://sp1.example.org',
  *                'https://sp2.example.org',
- *            ],
- *        ],
- *    ],
+ *            ),
+ *        ),
+ *    ),
  *
  * @author Nicolas Liampotis <nliam@grnet.gr>
  */
-class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
+class sspmod_affiliation_Auth_Process_PrimaryAffiliation extends SimpleSAML_Auth_ProcessingFilter
 {
     // List of SP entity IDs that should be excluded from this filter.
-    private $blacklist = [];
+    private $blacklist = array();
     
-    private $memberAffiliations = [
+    private $memberAffiliations = array(
         'faculty',
         'staff',
         'student',
         'employee',
         'member',
-    ];
+    );
 
     public function __construct($config, $reserved)
     {
@@ -65,9 +58,9 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
 
         if (array_key_exists('blacklist', $config)) {
             if (!is_array($config['blacklist'])) {
-                Logger::error(
+                SimpleSAML_Logger::error(
                     "[attrauthcomanage] Configuration error: 'blacklist' not an array");
-                throw new \Exception(
+                throw new SimpleSAML_Error_Exception(
                     "attrauthcomanage configuration error: 'blacklist' not an array");
             }
             $this->blacklist = $config['blacklist']; 
@@ -79,13 +72,13 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
         try {
             assert('is_array($state)');
             if (isset($state['SPMetadata']['entityid']) && in_array($state['SPMetadata']['entityid'], $this->blacklist, true)) {
-                Logger::debug(
+                SimpleSAML_Logger::debug(
                     "[attrauthcomanage] process: Skipping blacklisted SP "
                     . var_export($state['SPMetadata']['entityid'], true));
                 return;
             }
             if (empty($state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.9'])) {
-                Logger::debug(
+                SimpleSAML_Logger::debug(
                     "[attrauthcomanage] 'eduPersonScopedAffiliation' attribute not available - skipping");
                 return;
             }
@@ -95,15 +88,15 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
                 }
                 $epsaArray = preg_split("~@~", $epsa, 2);
                 $foundAffiliation = $epsaArray[0];
-                $state['Attributes']['urn:oid:1.3.6.1.4.1.25178.1.2.9'] = [$epsaArray[1]];
+                $state['Attributes']['urn:oid:1.3.6.1.4.1.25178.1.2.9'] = array($epsaArray[1]);
                 if (in_array($foundAffiliation, $this->memberAffiliations)) {
-                    $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = ['member'];
+                    $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = array('member');
                     break;
                 } else {
-                    $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = [$foundAffiliation];
+                    $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = array($foundAffiliation);
                 }
             }
-            Logger::debug("[attrauthcomanage] updated attributes="
+            SimpleSAML_Logger::debug("[attrauthcomanage] updated attributes="
                 . var_export($state['Attributes'], true));
         } catch (\Exception $e) {
             $this->showException($e);
@@ -112,8 +105,8 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
 
     private function showException($e)
     {
-        $globalConfig = Configuration::getInstance();
-        $t = new Template($globalConfig, 'affiliation:exception.tpl.php');
+        $globalConfig = SimpleSAML_Configuration::getInstance();
+        $t = new SimpleSAML_XHTML_Template($globalConfig, 'affiliation:exception.tpl.php');
         $t->data['e'] = $e->getMessage();
         $t->show();
         exit();
