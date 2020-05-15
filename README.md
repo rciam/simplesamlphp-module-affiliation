@@ -5,16 +5,44 @@ attributes expressing affiliation information.
 
 ## PrimaryAffiliation
 
-SimpleSAMLphp authproc filter for extracting the user's primary affiliation.
+SimpleSAMLphp authproc filter for extracting the user's primary affiliation
+ * and home organisation attributes from the provided scoped affiliation.
+ *
+ * The filter generates a primary affiliation (eduPersonPrimaryAffiliation)
+ * value based on the affiliation information contained in the scoped
+ * affiliation attribute (e.g. voPersonExternalAffiliation or 
+ * eduPersonScopedAffiliation) value(s).
+ * Specifically, in the presence of a single-valued scoped affiliation
+ * attribute, the primary affiliation is derived from the affiliation value
+ * contained in that scoped affiliation attribute. In the case of a
+ * multi-valued scoped affiliation attribute, the filter assigns the "member"
+ * affiliation for one or more of the following affiliations:
+ *   - "faculty" or
+ *   - "staff" or
+ *   - "student" or
+ *   - "employee"
+ *
+ * The module assumes that:
+ *  1. the scoped affiliation attribute name is found from the ordered
+ *     candidate list:
+ *       i.  "urn:oid:1.3.6.1.4.1.25178.4.1.11" or
+ *       ii. "urn:oid:1.3.6.1.4.1.5923.1.1.1.9"
+ *  2. the eduPersonPrimaryAffiliation attribute name is expressed as:
+ *     "urn:oid:1.3.6.1.4.1.5923.1.1.1.5"
+ *  3. the schacHomeOrganization attribute is expressed as:
+ *     "urn:oid:1.3.6.1.4.1.25178.1.2.9"
+
+SimpleSAMLphp authproc filter for extracting the user's primary affiliation 
+and home organisation attributes from the provided scoped affiliation.
  
 The filter generates a primary affiliation (`eduPersonPrimaryAffiliation`)
 value based on the affiliation information contained in the scoped
-affiliation attribute (`eduPersonScopedAffiliation` - `ePSA`) value(s).
-Specifically, in the presence of a single-valued `ePSA` attribute,
+affiliation attribute (e.g. `voPersonExternalAffiliation` or
+`eduPersonScopedAffiliation`) value(s).
+Specifically, in the presence of a single-valued scoped affiliation attribute,
 the primary affiliation is derived from the affiliation value contained in
-that `ePSA` attribute. In the case of a multi-valued `ePSA` attribute, the
-filter assigns the `"member"` affiliation for one or more of the following
-affiliations:
+that scoped affiliation attribute. In the case of a multi-valued scoped
+affiliation attribute, the filter assigns the `"member"` affiliation for one or more of the following affiliations:
 
 * `"faculty"` or
 * `"staff"` or
@@ -22,10 +50,14 @@ affiliations:
 * `"employee"`
 
 The module assumes that:
-1. the `eduPersonScopedAffiliation` attribute name is expressed as:
-   `"urn:oid:1.3.6.1.4.1.5923.1.1.1.9"`
+1. the scoped affiliation attribute name is found from the order candidate
+   list:
+   i.  `"urn:oid:1.3.6.1.4.1.25178.4.1.11"` or
+   ii. `"urn:oid:1.3.6.1.4.1.5923.1.1.1.9"`
 2. the `eduPersonPrimaryAffiliation` attribute name is expressed as:
    `"urn:oid:1.3.6.1.4.1.5923.1.1.1.5"`
+3. the schacHomeOrganization attribute is expressed as:
+   `"urn:oid:1.3.6.1.4.1.25178.1.2.9"`
 
 ### Configuration
 

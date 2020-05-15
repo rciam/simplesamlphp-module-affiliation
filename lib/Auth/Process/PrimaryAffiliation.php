@@ -1,26 +1,32 @@
 <?php
 
 /**
- * SimpleSAMLphp authproc filter for extracting the user's primary affiliation.
+ * SimpleSAMLphp authproc filter for extracting the user's primary affiliation
+ * and home organisation attributes from the provided scoped affiliation.
  *
  * The filter generates a primary affiliation (eduPersonPrimaryAffiliation)
  * value based on the affiliation information contained in the scoped
- * affiliation attribute (eduPersonScopedAffiliation - ePSA) value(s).
- * Specifically, in the presence of a single-valued ePSA attribute,
- * the primary affiliation is derived from the affiliation value contained in
- * that ePSA attribute. In the case of a multi-valued ePSA attribute, the
- * filter assigns the "member" affiliation for one or more of the following
- * affiliations:
+ * affiliation attribute (e.g. voPersonExternalAffiliation or 
+ * eduPersonScopedAffiliation) value(s).
+ * Specifically, in the presence of a single-valued scoped affiliation
+ * attribute, the primary affiliation is derived from the affiliation value
+ * contained in that scoped affiliation attribute. In the case of a
+ * multi-valued scoped affiliation attribute, the filter assigns the "member"
+ * affiliation for one or more of the following affiliations:
  *   - "faculty" or
  *   - "staff" or
  *   - "student" or
  *   - "employee"
  *
  * The module assumes that:
- *  1. the eduPersonScopedAffiliation attribute name is expressed as:
- *     "urn:oid:1.3.6.1.4.1.5923.1.1.1.9"
+ *  1. the scoped affiliation attribute name is found from the ordered
+ *     candidate list:
+ *       i.  "urn:oid:1.3.6.1.4.1.25178.4.1.11" or
+ *       ii. "urn:oid:1.3.6.1.4.1.5923.1.1.1.9"
  *  2. the eduPersonPrimaryAffiliation attribute name is expressed as:
  *     "urn:oid:1.3.6.1.4.1.5923.1.1.1.5"
+ *  3. the schacHomeOrganization attribute is expressed as:
+ *     "urn:oid:1.3.6.1.4.1.25178.1.2.9"
  *
  * Example configuration:
  *
@@ -40,8 +46,14 @@
  */
 class sspmod_affiliation_Auth_Process_PrimaryAffiliation extends SimpleSAML_Auth_ProcessingFilter
 {
+
     // List of SP entity IDs that should be excluded from this filter.
     private $blacklist = array();
+
+    private $candidates = array(
+        'urn:oid:1.3.6.1.4.1.25178.4.1.11',  // voPerson v2.0
+        'urn:oid:1.3.6.1.4.1.5923.1.1.1.9',  // eduPerson
+    );
     
     private $memberAffiliations = array(
         'faculty',
@@ -50,6 +62,10 @@ class sspmod_affiliation_Auth_Process_PrimaryAffiliation extends SimpleSAML_Auth
         'employee',
         'member',
     );
+
+    private $eduPersonPrimaryAffiliation = "urn:oid:1.3.6.1.4.1.5923.1.1.1.5";
+
+    private $schacHomeOrganization = "urn:oid:1.3.6.1.4.1.25178.1.2.9";
 
     public function __construct($config, $reserved)
     {
@@ -69,46 +85,42 @@ class sspmod_affiliation_Auth_Process_PrimaryAffiliation extends SimpleSAML_Auth
 
     public function process(&$state)
     {
-        try {
-            assert('is_array($state)');
-            if (isset($state['SPMetadata']['entityid']) && in_array($state['SPMetadata']['entityid'], $this->blacklist, true)) {
-                SimpleSAML_Logger::debug(
-                    "[attrauthcomanage] process: Skipping blacklisted SP "
-                    . var_export($state['SPMetadata']['entityid'], true));
-                return;
-            }
-            if (empty($state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.9'])) {
-                SimpleSAML_Logger::debug(
-                    "[attrauthcomanage] 'eduPersonScopedAffiliation' attribute not available - skipping");
-                return;
-            }
-            foreach ($state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.9'] as $epsa) {
-                if (strpos($epsa, "@") === false) {
-                    continue;    
-                }
-                $epsaArray = preg_split("~@~", $epsa, 2);
-                $foundAffiliation = $epsaArray[0];
-                $state['Attributes']['urn:oid:1.3.6.1.4.1.25178.1.2.9'] = array($epsaArray[1]);
-                if (in_array($foundAffiliation, $this->memberAffiliations)) {
-                    $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = array('member');
-                    break;
-                } else {
-                    $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = array($foundAffiliation);
-                }
-            }
-            SimpleSAML_Logger::debug("[attrauthcomanage] updated attributes="
-                . var_export($state['Attributes'], true));
-        } catch (\Exception $e) {
-            $this->showException($e);
+        assert('is_array($state)');
+
+        if (isset($state['SPMetadata']['entityid']) && in_array($state['SPMetadata']['entityid'], $this->blacklist, true)) {
+            SimpleSAML_Logger::debug("[PrimaryAffiliation] process: Skipping blacklisted SP " . var_export($state['SPMetadata']['entityid'], true));
+            return;
         }
+
+        foreach ($this->candidates as $scopedAffiliation) {
+            if (!empty($state['Attributes'][$scopedAffiliation])) {
+                $foundScopedAffiliation = $scopedAffiliation;
+                break;
+            }
+        }
+
+        if (empty($foundScopedAffiliation)) {
+            SimpleSAML_Logger::debug("[PrimaryAffiliation] 'Scoped Affiliation' attribute not available - skipping");
+            return;
+        }
+
+        foreach ($state['Attributes'][$foundScopedAffiliation] as $epsa) {
+            SimpleSAML_Logger::debug("[PrimaryAffiliation] 'Scoped affiliation' value found: " . $epsa);
+            if (strpos($epsa, "@") === false) {
+                continue;
+            }
+            $epsaArray = preg_split("~@~", $epsa, 2);
+            $foundAffiliation = $epsaArray[0];
+            $state['Attributes'][$this->schacHomeOrganization] = array($epsaArray[1]);
+            if (in_array($foundAffiliation, $this->memberAffiliations)) {
+                $state['Attributes'][$this->eduPersonPrimaryAffiliation] = array('member');
+                break;
+            } else {
+                $state['Attributes'][$this->eduPersonPrimaryAffiliation] = array($foundAffiliation);
+            }
+        }
+        SimpleSAML_Logger::debug("[PrimaryAffiliation] updated attributes="
+            . var_export($state['Attributes'], true));
     }
 
-    private function showException($e)
-    {
-        $globalConfig = SimpleSAML_Configuration::getInstance();
-        $t = new SimpleSAML_XHTML_Template($globalConfig, 'affiliation:exception.tpl.php');
-        $t->data['e'] = $e->getMessage();
-        $t->show();
-        exit();
-    }
 }
