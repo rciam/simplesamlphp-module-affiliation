@@ -24,9 +24,7 @@ use SimpleSAML\Utils\Config;
  *   - "employee"
  *
  * The module assumes that:
- *  1. the eduPersonScopedAffiliation attribute name is expressed as:
- *     "urn:oid:1.3.6.1.4.1.5923.1.1.1.9"
- *  2. the eduPersonPrimaryAffiliation attribute name is expressed as:
+ *  1. the eduPersonPrimaryAffiliation attribute name is expressed as:
  *     "urn:oid:1.3.6.1.4.1.5923.1.1.1.5"
  *
  * Example configuration:
@@ -35,6 +33,8 @@ use SimpleSAML\Utils\Config;
  *        ...
  *        '101' => [
  *            'class' => 'affiliation:PrimaryAffiliation',
+ *            // Optional value for scopedAffiliation, defaults to 'eduPersonScopedAffiliation'
+ *            'scopedAffiliation' => 'voPersonExternalAffiliation',
  *            // Optional list of SP entity IDs that should be excluded
  *            'blacklist' => [
  *                'https://sp1.example.org',
@@ -47,6 +47,8 @@ use SimpleSAML\Utils\Config;
  */
 class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
 {
+    private $scopedAffiliation = 'eduPersonScopedAffiliation';
+
     // List of SP entity IDs that should be excluded from this filter.
     private $blacklist = [];
     
@@ -66,11 +68,21 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
         if (array_key_exists('blacklist', $config)) {
             if (!is_array($config['blacklist'])) {
                 Logger::error(
-                    "[attrauthcomanage] Configuration error: 'blacklist' not an array");
+                    "[affiliation] Configuration error: 'blacklist' not an array");
                 throw new \Exception(
-                    "attrauthcomanage configuration error: 'blacklist' not an array");
+                    "affiliation configuration error: 'blacklist' not an array");
             }
             $this->blacklist = $config['blacklist']; 
+        }
+
+        if (array_key_exists('scopedAffiliation', $config)) {
+            if (!is_string($config['scopedAffiliation'])) {
+                Logger::error(
+                    "[affiliation] Configuration error: 'scopedAffiliation' not an string");
+                throw new \Exception(
+                    "affiliation configuration error: 'scopedAffiliation' not an string");
+            }
+            $this->scopedAffiliation = $config['scopedAffiliation']; 
         }
     }
 
@@ -80,16 +92,16 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
             assert('is_array($state)');
             if (isset($state['SPMetadata']['entityid']) && in_array($state['SPMetadata']['entityid'], $this->blacklist, true)) {
                 Logger::debug(
-                    "[attrauthcomanage] process: Skipping blacklisted SP "
+                    "[affiliation] process: Skipping blacklisted SP "
                     . var_export($state['SPMetadata']['entityid'], true));
                 return;
             }
-            if (empty($state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.9'])) {
+            if (empty($state['Attributes'][$this->scopedAffiliation])) {
                 Logger::debug(
-                    "[attrauthcomanage] 'eduPersonScopedAffiliation' attribute not available - skipping");
+                    "[affiliation] '". $this->scopedAffiliation . "' attribute not available - skipping");
                 return;
             }
-            foreach ($state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.9'] as $epsa) {
+            foreach ($state['Attributes'][$this->scopedAffiliation] as $epsa) {
                 if (strpos($epsa, "@") === false) {
                     continue;    
                 }
@@ -103,7 +115,7 @@ class PrimaryAffiliation extends \SimpleSAML\Auth\ProcessingFilter
                     $state['Attributes']['urn:oid:1.3.6.1.4.1.5923.1.1.1.5'] = [$foundAffiliation];
                 }
             }
-            Logger::debug("[attrauthcomanage] updated attributes="
+            Logger::debug("[affiliation] updated attributes="
                 . var_export($state['Attributes'], true));
         } catch (\Exception $e) {
             $this->showException($e);
