@@ -22,15 +22,13 @@ affiliations:
 * `"employee"`
 
 The module assumes that:
-1. the `eduPersonScopedAffiliation` attribute name is expressed as:
-   `"urn:oid:1.3.6.1.4.1.5923.1.1.1.9"`
-2. the `eduPersonPrimaryAffiliation` attribute name is expressed as:
+1. the `eduPersonPrimaryAffiliation` attribute name is expressed as:
    `"urn:oid:1.3.6.1.4.1.5923.1.1.1.5"`
 
 ### Configuration
 
 The following configuration options are available:
-
+* `scopedAffiliation`: Optional, a string that contains the attribute for scopedAffiliation. Defaults to `eduPersonScopedAffiliation`
 * `blacklist`: Optional, an array of SP entityIDs that should be excluded
   from this authproc filter
 
@@ -57,7 +55,7 @@ This table matches the module version with the supported SimpleSAMLphp version.
 | Module |  SimpleSAMLphp |
 |:------:|:--------------:|
 | v1.0   | v1.14          |
-| v2.0   | v1.17          |
+| v2.x   | v1.17+         |
 
 ## License
 
