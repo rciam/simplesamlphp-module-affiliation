@@ -11,22 +11,10 @@ use SimpleSAML\Metadata;
 /**
  * SimpleSAMLphp authproc filter for extracting Organization friendly Name from IdP Metadata.
  *
- * The filter generates a primary affiliation (eduPersonPrimaryAffiliation)
- * value based on the affiliation information contained in the scoped
- * affiliation attribute (eduPersonScopedAffiliation - ePSA) value(s).
- * Specifically, in the presence of a single-valued ePSA attribute,
- * the primary affiliation is derived from the affiliation value contained in
- * that ePSA attribute. In the case of a multi-valued ePSA attribute, the
- * filter assigns the "member" affiliation for one or more of the following
- * affiliations:
- *   - "faculty" or
- *   - "staff" or
- *   - "student" or
- *   - "employee"
+ * The filter fetches the Identity Provider friendly name and assigns it to the
+ * configured Organization attribute when the attribute is empty.
+ * The filter also assigns the "member" affiliation.
  *
- * The module assumes that:
- *  1. the eduPersonPrimaryAffiliation attribute name is expressed as:
- *     "urn:oid:1.3.6.1.4.1.5923.1.1.1.5"
  *
  * Example configuration:
  *
