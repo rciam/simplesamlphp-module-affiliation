@@ -11,9 +11,8 @@ use SimpleSAML\Metadata;
 /**
  * SimpleSAMLphp authproc filter for extracting Organization friendly Name from IdP Metadata.
  *
- * The filter fetches the Identity Provider friendly name and assigns it to the
+ * The filter fetches the Identity Provider Organization friendly name and assigns it to the
  * configured Organization attribute when the attribute is empty.
- * The filter also assigns the "member" affiliation.
  *
  *
  * Example configuration:
@@ -25,7 +24,7 @@ use SimpleSAML\Metadata;
  *            // Optional value for oAttribute, defaults to 'urn:oid:2.5.4.10'
  *            'oAttribute' => 'o',
  *            // Optional list of SP entity IDs that should be excluded
- *            'blacklist' => [
+ *            'spBlacklist' => [
  *                'https://sp1.example.org',
  *                'https://sp2.example.org',
  *            ],
@@ -43,10 +42,9 @@ class OrgFromIdPMetadata extends \SimpleSAML\Auth\ProcessingFilter
   // o (organizationName), (defined in RFC4519; urn:oid:2.5.4.10
   // schacHomeOrganization, urn:oid:1.3.6.1.4.1.25178.1.2.9
   private $oAttribute = 'urn:oid:2.5.4.10';
-  private $affiliationAttribute = 'urn:oid:1.3.6.1.4.1.5923.1.1.1.5';
 
   // List of SP entity IDs that should be excluded from this filter.
-  private $blacklist = [];
+  private $spBlacklist = [];
 
   // List of IdP entity IDs that should be excluded from this filter.
   private $idpBlacklist = [];
@@ -56,14 +54,14 @@ class OrgFromIdPMetadata extends \SimpleSAML\Auth\ProcessingFilter
     parent::__construct($config, $reserved);
     assert('is_array($config)');
 
-    if (array_key_exists('blacklist', $config)) {
-      if (!is_array($config['blacklist'])) {
+    if (array_key_exists('spBlacklist', $config)) {
+      if (!is_array($config['spBlacklist'])) {
         Logger::error(
-          "[OrgFromIdPMetadata] Configuration error: 'blacklist' not an array");
+          "[OrgFromIdPMetadata] Configuration error: 'spBlacklist' not an array");
         throw new \Exception(
-          "affiliation configuration error: 'blacklist' not an array");
+          "affiliation configuration error: 'spBlacklist' not an array");
       }
-      $this->blacklist = $config['blacklist'];
+      $this->spBlacklist = $config['spBlacklist'];
     }
 
     if (array_key_exists('idpBlacklist', $config)) {
@@ -92,7 +90,7 @@ class OrgFromIdPMetadata extends \SimpleSAML\Auth\ProcessingFilter
     try {
       // Skip blacklisted SPs
       assert('is_array($state)');
-      if (isset($state['SPMetadata']['entityid']) && in_array($state['SPMetadata']['entityid'], $this->blacklist, true)) {
+      if (isset($state['SPMetadata']['entityid']) && in_array($state['SPMetadata']['entityid'], $this->spBlacklist, true)) {
         Logger::debug(
           "[OrgFromIdPMetadata] process: Skipping blacklisted SP "
           . var_export($state['SPMetadata']['entityid'], true));
@@ -131,8 +129,6 @@ class OrgFromIdPMetadata extends \SimpleSAML\Auth\ProcessingFilter
           . var_export($oValue, true));
         // Configured O Attribute
         $state['Attributes'][$this->oAttribute] = [$oValue];
-        // By default we set the affiliation to member
-        $state['Attributes'][$this->affiliationAttribute] = ['member'];
       }
 
       Logger::debug("[OrgFromIdPMetadata] updated attributes="
